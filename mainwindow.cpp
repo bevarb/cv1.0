@@ -101,7 +101,7 @@ void MainWindow::bluetooth()
     BreakBtn = new QPushButton(tr("Break"));
     Stop1Btn = new QPushButton(tr("Stop"));
     dock1->setStyleSheet("QPushButton{color:white;background-color:black}");
-   // QTextEdit *StatusOfBT = new QTextEdit;
+    // QTextEdit *StatusOfBT = new QTextEdit;
     //进行布局
     QHBoxLayout *Dock1Layout1 = new QHBoxLayout();
 
@@ -131,7 +131,7 @@ void MainWindow::bluetooth()
 
 void MainWindow::setvariables()
 {
-    /*停靠窗口2，调整各种变量*/
+    //停靠窗口2，调整各种变量
     QDockWidget *dock2 = new QDockWidget(tr("DockWindow2"));
     dock2->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock2->setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
@@ -207,7 +207,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(tr("V1.0"));//窗体标题
-    /*主窗口设计*/
+    //主窗口设计
     scene = new QGraphicsScene;
     scene->setSceneRect(-200,-200,400,400);
     //initScene();
@@ -220,7 +220,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 
-    /*停靠窗口3，显示图像各种参数*/
+    //停靠窗口3，显示图像各种参数
     QDockWidget *dock3 = new QDockWidget(tr("DockWindow3"));
     dock3->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock3->setAllowedAreas(Qt::BottomDockWidgetArea);
@@ -228,7 +228,8 @@ MainWindow::MainWindow(QWidget *parent)
     dock3->setMinimumSize(1500,100);
     QTextEdit *StatusOfDock3 = new QTextEdit;
     dock3->setWidget(StatusOfDock3);
-    /*创建动作、菜单、工具栏的函数*/
+        
+    //创建动作、菜单、工具栏的函数
     createActions();
     createMenus();
     createToolBars();
@@ -237,7 +238,7 @@ MainWindow::MainWindow(QWidget *parent)
     setvariables();
 
 
-    /*创建坐标轴*/
+    //创建坐标轴
 
 
 }
