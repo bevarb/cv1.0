@@ -23,8 +23,9 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsEllipseItem>
-#include <QtBluetooth/QtBluetooth>
+
 #include <QTableWidget>
+#include <QtSerialPort/QSerialPort>
 //#include <QtCharts/QXYSeries>
 
 #include "showwidget.h"
@@ -46,6 +47,7 @@ public:
     void startDeviceDiscovery();
     void deviceDiscovered();
     void bluetooth();
+    void statusOfAll();
 private:
     //基本布局
 
@@ -70,19 +72,27 @@ private:
     QAction *ZoomOutAction;
     QAction *UndoAction;
     QAction *RedoAction;
-
-    QToolBar *Tool;       //工具栏
-
+    //工具栏
+    QToolBar *Tool;
     QToolBar *DoToolBar;
     //状态栏
     QStatusBar *Status;
+
     //停靠窗口1，显示蓝牙连接状态
     QLabel *BlueToothLabel;
     QComboBox *BlueToothPortComboBox;
     QPushButton *ConnectBtn;
     QPushButton *BreakBtn;
-    QTableWidget *BT_INFO;
     QPushButton *Stop1Btn;
+    QSerialPort *CurrentPort;
+    QLabel *BaudRateLabel;
+    QComboBox *BaudRateComBox;
+    QLabel *DateRateLabel;
+    QComboBox *DateRateComBox;
+    QLabel *ParityLabel;
+    QComboBox *ParityComBox;
+    QLabel *StopBitsLabel;
+    QComboBox *StopBitsComBox;
 
     //停靠窗口2，各种参数调整模块
     QLabel *InitELabel;
@@ -99,17 +109,30 @@ private:
     QLineEdit *GainLineEdit;
     QLineEdit *SampleIntervalLineEdit;
     QLineEdit *QuietTimeLineEdit;
+    QPushButton *SendBtn;
     QPushButton *StartBtn;
     QPushButton *PauseBtn;
     QPushButton *Stop2Btn;
     QButtonGroup *Dock2Group;
     QTextEdit *StatusOfBT;
 
+    //停靠窗口3，3个显示窗口，状态/接受/发送
+    QTextEdit *StatusOfDock3;
+    QTextEdit *SendInfo;
+    QTextEdit *ReceiveInfo;
+
+
 protected slots:
     void showNewFile();
     void showZoomIn();
     void showZoomOut();
-
+    void startPainting();
+    void stopPainting();
+private slots:
+    void on_clearButton_clicked();
+    void on_sendButtton_clicked();
+    void on_connectButton_clicked();
+    void Read_Data();
 };
 
 #endif // MAINWINDOW_H
