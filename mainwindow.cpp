@@ -10,7 +10,9 @@
 #include <QLabel>
 #include <QFileDialog>
 #include <QAction>
-
+#include <QDebug>
+#include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
 
 void MainWindow::createActions()
 {
@@ -67,11 +69,10 @@ void MainWindow::createToolBars()
     Tool->setAllowedAreas(Qt::TopToolBarArea);
 
 }
-void MainWindow::createStatusBars()
+void MainWindow::createStatusBars()//状态栏，最下面一行，显示状态
 {
     Status = statusBar();
     Status->addWidget(new QLabel("2",this));
-
 
 }
 
@@ -84,57 +85,207 @@ void MainWindow::showZoomIn()//下面这两个要修改，能够将实时图像�
 {
 
 }
-void MainWindow::showZoomOut()
+void MainWindow::showZoomOut()//
 {
 
 }
-void MainWindow::bluetooth()
+void MainWindow::bluetooth()//蓝牙模块
 {
     QDockWidget *dock1 = new QDockWidget(tr("DockWindow1"));
     dock1->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock1->setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
 
     addDockWidget(Qt::RightDockWidgetArea,dock1);
-
-    //BT_INFO = new QTableWidget(4,5,this);
+    dock1->setStyleSheet("QPushButton{color:white;background-color:black}");//按钮样式设置
     BlueToothLabel = new QLabel(tr("Port name: "));
-    ConnectBtn = new QPushButton(tr("Connect"));
+    ConnectBtn = new QPushButton("Connect");
     BreakBtn = new QPushButton(tr("Break"));
     Stop1Btn = new QPushButton(tr("Stop"));
     BlueToothPortComboBox = new QComboBox;
-    dock1->setStyleSheet("QPushButton{color:white;background-color:black}");
-   // QTextEdit *StatusOfBT = new QTextEdit;
-    //进行布局
-    QHBoxLayout *Dock1Layout1 = new QHBoxLayout();
 
-    //Dock1Layout1->addWidget(BlueToothLabel,0,0);
-    //Dock1Layout->addWidget(BlueToothPortComboBox,0,1);
+    BaudRateLabel = new QLabel(tr("BaudRate: "));
+    BaudRateComBox = new QComboBox;
+    BaudRateComBox->addItem(tr("11520"));
+    BaudRateComBox->addItem(tr("9600"));
+
+    DateRateLabel = new QLabel(tr("DateRate: "));
+    DateRateComBox = new QComboBox;
+    DateRateComBox->addItem("5");
+    DateRateComBox->addItem("6");
+    DateRateComBox->addItem("7");
+    DateRateComBox->addItem("8");
+    DateRateComBox->setCurrentIndex(4);//设置下拉选择默认为第4个
+    ParityLabel = new QLabel("Parity");
+    ParityComBox = new QComboBox;
+    ParityComBox->addItem("Yes");
+    ParityComBox->addItem("No");
+    ParityComBox->setCurrentIndex(2);
+    StopBitsLabel = new QLabel("StopBits: ");
+    StopBitsComBox = new QComboBox;
+    StopBitsComBox->addItem("1");
+    StopBitsComBox->addItem("2");
+
+
+    // QTextEdit *StatusOfBT = new QTextEdit;
+
+    //进行布局，先横向再纵向
+    QHBoxLayout *Dock1Layout1 = new QHBoxLayout();
     Dock1Layout1->addWidget(BlueToothLabel);
     Dock1Layout1->addWidget(BlueToothPortComboBox);
+
     QHBoxLayout *Dock1Layout2 = new QHBoxLayout();
-    Dock1Layout2->addWidget(ConnectBtn);
-    Dock1Layout2->addWidget(BreakBtn);
-    Dock1Layout2->addWidget(Stop1Btn);
-    //Dock1Layout->addWidget(StatusOfBT,3,0);
+    Dock1Layout2->addWidget(BaudRateLabel);
+    Dock1Layout2->addWidget(BaudRateComBox);
+
+    QHBoxLayout *Dock1Layout3 = new QHBoxLayout();
+    Dock1Layout3->addWidget(DateRateLabel);
+    Dock1Layout3->addWidget(DateRateComBox);
+
+    QHBoxLayout *Dock1Layout4 = new QHBoxLayout();
+    Dock1Layout4->addWidget(ParityLabel);
+    Dock1Layout4->addWidget(ParityComBox);
+
+    QHBoxLayout *Dock1Layout5 = new QHBoxLayout();
+    Dock1Layout5->addWidget(StopBitsLabel);
+    Dock1Layout5->addWidget(StopBitsComBox);
+
+    QHBoxLayout *Dock1Layout6 = new QHBoxLayout();
+    Dock1Layout6->addWidget(ConnectBtn);//点击后就开始寻找设备进行连接
+    Dock1Layout6->addWidget(BreakBtn);//暂时未用到
+    Dock1Layout6->addWidget(Stop1Btn);//暂时未用到
+
     QVBoxLayout *Dock1Layout = new QVBoxLayout();
     Dock1Layout->setAlignment(Qt::AlignCenter);
     Dock1Layout->addLayout(Dock1Layout1);
     Dock1Layout->addLayout(Dock1Layout2);
+    Dock1Layout->addLayout(Dock1Layout3);
+    Dock1Layout->addLayout(Dock1Layout4);
+    Dock1Layout->addLayout(Dock1Layout5);
+    Dock1Layout->addLayout(Dock1Layout6);
+
+
     QWidget *Dock1Widget = new QWidget();
     Dock1Widget->setLayout(Dock1Layout);
     dock1->setWidget(Dock1Widget);
 
-    ConnectBtn->setMaximumWidth(50);
+    ConnectBtn->setMinimumWidth(70);
     BreakBtn->setMaximumWidth(50);
     Stop1Btn ->setMaximumWidth(50);
-    //startDeviceDiscovery();
-    //BT_INFO->clearContents();
-    //BT_INFO->setRowCount(0);
+
+
+    CurrentPort = new QSerialPort(this);  //新建一个串口
+    foreach(const QSerialPortInfo &Info,QSerialPortInfo ::availablePorts())
+    {
+        CurrentPort->setPort(Info);
+        if(CurrentPort->open(QIODevice::ReadWrite))
+        {
+          QSerialPort CurrentPort;
+            BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
+          CurrentPort.close();
+        }
+
+    }
+      connect(ConnectBtn, SIGNAL(clicked()),this,SLOT(on_connectButton_clicked()));
+    //connect(BreakBtn, SIGNAL(clicked()),this,SLOT(stopPainting()));
+    //connect(ui->SignalcomboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(Signalchange()));
+
 }
 
+void MainWindow::on_clearButton_clicked()//清空发送与接收窗口信息
+{
+    SendInfo->clear();
+    ReceiveInfo->clear();
+}
+void MainWindow::on_sendButtton_clicked()//发送数据
+{
+    CurrentPort->write(SendInfo->toPlainText().toLatin1());//toPlainText(将文本编辑的文本转换为纯文本)
+                                                           //toLatin1(以qbytearray形式返回字符串的拉丁文-1表示形式。)
+}
+void MainWindow::Read_Data()//读取接收到的数据
+{
+    QByteArray buf;//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
+    buf = CurrentPort->readAll();
+    if(!buf.isEmpty())
+    {
+        QString str = ReceiveInfo->toPlainText().toLatin1();
+        str += tr(buf);
+        ReceiveInfo->clear();
+        ReceiveInfo->append(str);
+
+    }
+    buf.clear();
+}
+void MainWindow::on_connectButton_clicked()
+{
+    if(ConnectBtn->text()==tr("Connect"))
+    {
+        CurrentPort = new QSerialPort;
+        CurrentPort->setPortName(BlueToothPortComboBox->currentText());//设置串口名
+        CurrentPort->open(QIODevice::ReadWrite);//打开串口
+        CurrentPort->setBaudRate(BaudRateComBox->currentText().toInt());//设置波特率
+
+        switch(DateRateComBox->currentIndex())  //设置数据位数
+        {
+        case 5: CurrentPort->setDataBits(QSerialPort::Data5); break;
+        case 6: CurrentPort->setDataBits(QSerialPort::Data6); break;
+        case 7: CurrentPort->setDataBits(QSerialPort::Data7); break;
+        case 8: CurrentPort->setDataBits(QSerialPort::Data8); break;
+        default: break;
+        }
+        switch(ParityComBox->currentIndex())   //设置奇偶校验
+        {
+        case 0: CurrentPort->setParity(QSerialPort::NoParity); break;
+        default: break;
+        }
+        switch(StopBitsComBox->currentIndex())   //设置停止位
+        {
+        case 1: CurrentPort->setStopBits(QSerialPort::OneStop); break;
+        case 2: CurrentPort->setStopBits(QSerialPort::TwoStop); break;
+        default: break;
+        }
+        CurrentPort->setFlowControl(QSerialPort::NoFlowControl);  //设置流控制
+
+        //关闭设置菜单使能
+        BlueToothPortComboBox->setEnabled(false);
+        BaudRateComBox->setEnabled(false);
+        DateRateComBox->setEnabled(false);
+        ParityComBox->setEnabled(false);
+        StopBitsComBox->setEnabled(false);
+        ConnectBtn->setText(tr("Close"));
+        SendBtn->setEnabled(true);
+        //连接信号槽
+        QObject::connect(CurrentPort, &QSerialPort::readyRead, this, &MainWindow::Read_Data);
+
+    }
+    else
+    {
+        //关闭串口
+        CurrentPort->clear();
+        CurrentPort->close();
+        CurrentPort->deleteLater();
+        //恢复设置使能
+        BlueToothPortComboBox->setEnabled(true);
+        BaudRateComBox->setEnabled(true);
+        DateRateComBox->setEnabled(true);
+        ParityComBox->setEnabled(true);
+        StopBitsComBox->setEnabled(true);
+        ConnectBtn->setText(tr("Connect"));
+        SendBtn->setEnabled(false);
+
+    }
+
+}
+void MainWindow::startPainting()
+{
+
+}
+void MainWindow::stopPainting()
+{
+
+}
 void MainWindow::setvariables()
 {
-    /*停靠窗口2，调整各种变量*/
+    //停靠窗口2，调整各种变量
     QDockWidget *dock2 = new QDockWidget(tr("DockWindow2"));
     dock2->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock2->setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
@@ -158,6 +309,7 @@ void MainWindow::setvariables()
     SampleIntervalLineEdit = new QLineEdit;
     QuietTimeLabel = new QLabel(tr("Quiet Time: "));
     QuietTimeLineEdit = new QLineEdit;
+    SendBtn = new QPushButton(tr("Send"));
     StartBtn = new QPushButton(tr("Start"));
     PauseBtn = new QPushButton(tr("Pause"));
     Stop2Btn = new QPushButton(tr("Stop"));
@@ -188,6 +340,7 @@ void MainWindow::setvariables()
     Dock2Layout7->addWidget(QuietTimeLabel);
     Dock2Layout7->addWidget(QuietTimeLineEdit);
     QHBoxLayout *Dock2Layout8 = new QHBoxLayout();
+    Dock2Layout8->addWidget(SendBtn);
     Dock2Layout8->addWidget(StartBtn);
     Dock2Layout8->addWidget(PauseBtn);
     Dock2Layout8->addWidget(Stop2Btn);
@@ -205,12 +358,34 @@ void MainWindow::setvariables()
     QWidget *Dock2Widget = new QWidget();
     Dock2Widget->setLayout(Dock2Layout);
     dock2->setWidget(Dock2Widget);
+
+
+    //connect(SendBtn,SIGNAL(clicked()),this,SLOT(on_SendButton_clicked()));
+}
+void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据；暂时让收发数据显示在这里，到后面可隐藏掉
+{
+    //停靠窗口3，显示图像各种参数
+    QDockWidget *dock3 = new QDockWidget(tr("DockWindow3"));
+    dock3->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
+    dock3->setAllowedAreas(Qt::BottomDockWidgetArea);
+    addDockWidget(Qt::BottomDockWidgetArea,dock3);
+    dock3->setMinimumSize(1500,100);
+    QHBoxLayout *Dock3Layout = new QHBoxLayout;
+    StatusOfDock3 = new QTextEdit;
+    SendInfo = new QTextEdit;
+    ReceiveInfo = new QTextEdit;
+    Dock3Layout->addWidget(StatusOfDock3);
+    Dock3Layout->addWidget(SendInfo);
+    Dock3Layout->addWidget(ReceiveInfo);
+    QWidget *Dock3Widget = new QWidget();
+    Dock3Widget->setLayout(Dock3Layout);
+    dock3->setWidget(Dock3Widget);
 }
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(tr("V1.0"));//窗体标题
-    /*主窗口设计*/
+    //主窗口设计
     scene = new QGraphicsScene;
     scene->setSceneRect(-200,-200,400,400);
     //initScene();
@@ -219,24 +394,16 @@ MainWindow::MainWindow(QWidget *parent)
     view->setMinimumSize(1000,800);
     setCentralWidget(view);
     resize(1000,800);
-    /*停靠窗口3，显示图像各种参数*/
-    QDockWidget *dock3 = new QDockWidget(tr("DockWindow3"));
-    dock3->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
-    dock3->setAllowedAreas(Qt::BottomDockWidgetArea);
-    addDockWidget(Qt::BottomDockWidgetArea,dock3);
-    dock3->setMinimumSize(1500,100);
-    QTextEdit *StatusOfDock3 = new QTextEdit;
-    dock3->setWidget(StatusOfDock3);
-    /*创建动作、菜单、工具栏的函数*/
+    //创建动作、菜单、工具栏的函数
     createActions();
     createMenus();
     createToolBars();
     createStatusBars();
+    //蓝牙、参数设置、状态显示
     bluetooth();
     setvariables();
-
-
-    /*创建坐标轴*/
+    statusOfAll();
+    //创建坐标轴
 
 
 }
