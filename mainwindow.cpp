@@ -13,7 +13,8 @@
 #include <QDebug>
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
-
+#include <QMessageBox>
+#include <QTimer>
 void MainWindow::createActions()
 {
     OpenFileAction = new QAction(QIcon("Open.png"),tr("Open"),this);
@@ -42,7 +43,7 @@ void MainWindow::createActions()
     //connect(CutAction,SIGNAL(triggered()),showWidget->text,SLOT(cut()));
     PasteAction = new QAction(QIcon("Open.png"),tr("Paste"),this);
     PasteAction->setShortcut(tr("Ctrl+V"));
-   // connect(PasteAction,SIGNAL(triggered()),showWidget->text,SLOT(paste()));
+    //connect(PasteAction,SIGNAL(triggered()),showWidget->text,SLOT(paste()));
     ZoomInAction = new QAction(QIcon("Open.png"),tr("ZoomIn"),this);
     connect(ZoomInAction,SIGNAL(triggered()),this,SLOT(showZoomIn()));
     ZoomOutAction = new QAction(QIcon("Open.png"),tr("ZoomOut"),this);
@@ -114,12 +115,12 @@ void MainWindow::bluetooth()//蓝牙模块
     DateRateComBox->addItem("6");
     DateRateComBox->addItem("7");
     DateRateComBox->addItem("8");
-    DateRateComBox->setCurrentIndex(4);//设置下拉选择默认为第4个
+    DateRateComBox->setCurrentIndex(3);//设置下拉选择默认为第4个
     ParityLabel = new QLabel("Parity");
     ParityComBox = new QComboBox;
-    ParityComBox->addItem("Yes");
-    ParityComBox->addItem("No");
-    ParityComBox->setCurrentIndex(2);
+    ParityComBox->addItem("On");
+    ParityComBox->addItem("Off");
+    ParityComBox->setCurrentIndex(1);
     StopBitsLabel = new QLabel("StopBits: ");
     StopBitsComBox = new QComboBox;
     StopBitsComBox->addItem("1");
@@ -151,8 +152,8 @@ void MainWindow::bluetooth()//蓝牙模块
 
     QHBoxLayout *Dock1Layout6 = new QHBoxLayout();
     Dock1Layout6->addWidget(ConnectBtn);//点击后就开始寻找设备进行连接
-    Dock1Layout6->addWidget(BreakBtn);//暂时未用到
-    Dock1Layout6->addWidget(Stop1Btn);//暂时未用到
+    Dock1Layout6->addWidget(BreakBtn);//点击后断开串口连接
+ //   Dock1Layout6->addWidget(Stop1Btn);//暂时未用到
 
     QVBoxLayout *Dock1Layout = new QVBoxLayout();
     Dock1Layout->setAlignment(Qt::AlignCenter);
@@ -172,22 +173,20 @@ void MainWindow::bluetooth()//蓝牙模块
     BreakBtn->setMaximumWidth(50);
     Stop1Btn ->setMaximumWidth(50);
 
-
-    CurrentPort = new QSerialPort(this);  //新建一个串口
+    //搜索串口，并添加到选项上供使用者选择
     foreach(const QSerialPortInfo &Info,QSerialPortInfo ::availablePorts())
     {
-        CurrentPort->setPort(Info);
-        if(CurrentPort->open(QIODevice::ReadWrite))
+        QSerialPort CurrentPort;
+        CurrentPort.setPort(Info);
+        if(CurrentPort.open(QIODevice::ReadWrite))
         {
-          QSerialPort CurrentPort;
-            BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
+          BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
           CurrentPort.close();
         }
 
     }
-      connect(ConnectBtn, SIGNAL(clicked()),this,SLOT(on_connectButton_clicked()));
-    //connect(BreakBtn, SIGNAL(clicked()),this,SLOT(stopPainting()));
-    //connect(ui->SignalcomboBox,SIGNAL(currentIndexChanged(int)),this,SLOT(Signalchange()));
+    connect(ConnectBtn, SIGNAL(clicked()),this,SLOT(on_connectButton_clicked()));
+    connect(BreakBtn, SIGNAL(clicked()),this,SLOT(on_breakButton_clicked()));
 
 }
 
@@ -196,54 +195,106 @@ void MainWindow::on_clearButton_clicked()//清空发送与接收窗口信息
     SendInfo->clear();
     ReceiveInfo->clear();
 }
+
+
 void MainWindow::on_sendButtton_clicked()//发送数据
 {
-    CurrentPort->write(SendInfo->toPlainText().toLatin1());//toPlainText(将文本编辑的文本转换为纯文本)
-                                                           //toLatin1(以qbytearray形式返回字符串的拉丁文-1表示形式。)
+
+
+    QByteArray SendBytes = SendInfo->toPlainText().toLatin1();//toPlainText(将文本编辑的文本转换为纯文本)
+
+
+    if(SendBytes.isEmpty())//判断发送数据是否为空
+     {
+            StatusOfDock3->append("No message can be sent, Please write something");
+     }
+
+    //StatusOfDock3->append(SendBytes);
+
+
+
+    CurrentPort->write(SendBytes);
+
+
+     // QByteArray bufCeShi = CurrentPort->readAll();//Qbytearray类提供一个字节数组  ？？？？？？？这里出错了，读取不了数据(测试时加到这里的)
+
+    //StatusOfDock3->append(bufCeShi);
 }
+
+
 void MainWindow::Read_Data()//读取接收到的数据
 {
-    QByteArray buf;//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
-    buf = CurrentPort->readAll();
+    QByteArray buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
+
+
     if(!buf.isEmpty())
     {
-        QString str = ReceiveInfo->toPlainText().toLatin1();
-        str += tr(buf);
+         //QString str = QString::fromLocal8Bit(buf);
+        QString str = ReceiveInfo->toPlainText().toUtf8();
+        str += QString(buf);//???
         ReceiveInfo->clear();
         ReceiveInfo->append(str);
 
     }
     buf.clear();
 }
+
+
 void MainWindow::on_connectButton_clicked()
 {
-    if(ConnectBtn->text()==tr("Connect"))
-    {
         CurrentPort = new QSerialPort;
         CurrentPort->setPortName(BlueToothPortComboBox->currentText());//设置串口名
-        CurrentPort->open(QIODevice::ReadWrite);//打开串口
-        CurrentPort->setBaudRate(BaudRateComBox->currentText().toInt());//设置波特率
-
-        switch(DateRateComBox->currentIndex())  //设置数据位数
+        //设置波特率
+        switch (BaudRateComBox->currentIndex())
         {
-        case 5: CurrentPort->setDataBits(QSerialPort::Data5); break;
-        case 6: CurrentPort->setDataBits(QSerialPort::Data6); break;
-        case 7: CurrentPort->setDataBits(QSerialPort::Data7); break;
-        case 8: CurrentPort->setDataBits(QSerialPort::Data8); break;
+         case 0: StatusOfDock3->append("Baud:115200");
+            CurrentPort->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections); break;
+         case 1: StatusOfDock3->append("Baud:9600");
+            CurrentPort->setBaudRate(QSerialPort::Baud9600,QSerialPort::AllDirections); break;
         default: break;
         }
-        switch(ParityComBox->currentIndex())   //设置奇偶校验
+
+        //设置数据位数
+        switch(DateRateComBox->currentIndex())
         {
-        case 0: CurrentPort->setParity(QSerialPort::NoParity); break;
+        case 0: StatusOfDock3->append("Data:5");
+            CurrentPort->setDataBits(QSerialPort::Data5); break;
+        case 1: StatusOfDock3->append("Data:6");
+            CurrentPort->setDataBits(QSerialPort::Data6); break;
+        case 2: StatusOfDock3->append("Data:7");
+            CurrentPort->setDataBits(QSerialPort::Data7); break;
+        case 3: StatusOfDock3->append("Data:8");
+            CurrentPort->setDataBits(QSerialPort::Data8); break;
+        default: break;
+        }
+        //设置奇偶校验
+        switch(ParityComBox->currentIndex())
+        {
+        case 1:StatusOfDock3->append("Parity: off");
+            CurrentPort->setParity(QSerialPort::NoParity); break;
         default: break;
         }
         switch(StopBitsComBox->currentIndex())   //设置停止位
         {
-        case 1: CurrentPort->setStopBits(QSerialPort::OneStop); break;
-        case 2: CurrentPort->setStopBits(QSerialPort::TwoStop); break;
+        case 0: StatusOfDock3->append("StopBits:1");
+            CurrentPort->setStopBits(QSerialPort::OneStop); break;
+        case 1: StatusOfDock3->append("StopBits:2");
+            CurrentPort->setStopBits(QSerialPort::TwoStop); break;
         default: break;
         }
         CurrentPort->setFlowControl(QSerialPort::NoFlowControl);  //设置流控制
+
+        CurrentPort->open(QIODevice::ReadWrite);//打开串口
+
+        if(CurrentPort->isOpen())
+        {
+           StatusOfDock3->append("Succeesfully open the Port ");
+        }
+        else
+        {
+           StatusOfDock3->append("Defeatly open the port");
+        }
+
 
         //关闭设置菜单使能
         BlueToothPortComboBox->setEnabled(false);
@@ -251,29 +302,29 @@ void MainWindow::on_connectButton_clicked()
         DateRateComBox->setEnabled(false);
         ParityComBox->setEnabled(false);
         StopBitsComBox->setEnabled(false);
-        ConnectBtn->setText(tr("Close"));
+        ConnectBtn->setEnabled(false);
+        BreakBtn->setEnabled(true);
         SendBtn->setEnabled(true);
         //连接信号槽
         QObject::connect(CurrentPort, &QSerialPort::readyRead, this, &MainWindow::Read_Data);
 
-    }
-    else
-    {
-        //关闭串口
-        CurrentPort->clear();
-        CurrentPort->close();
-        CurrentPort->deleteLater();
-        //恢复设置使能
-        BlueToothPortComboBox->setEnabled(true);
-        BaudRateComBox->setEnabled(true);
-        DateRateComBox->setEnabled(true);
-        ParityComBox->setEnabled(true);
-        StopBitsComBox->setEnabled(true);
-        ConnectBtn->setText(tr("Connect"));
-        SendBtn->setEnabled(false);
-
-    }
-
+}
+void MainWindow::on_breakButton_clicked()
+{
+    //关闭串口
+    CurrentPort->clear();
+    CurrentPort->close();
+    CurrentPort->deleteLater();
+    StatusOfDock3->append("Serial connection has been disconnected");
+    //恢复设置使能
+    BlueToothPortComboBox->setEnabled(true);
+    BaudRateComBox->setEnabled(true);
+    DateRateComBox->setEnabled(true);
+    ParityComBox->setEnabled(true);
+    StopBitsComBox->setEnabled(true);
+    ConnectBtn->setEnabled(true);
+    BreakBtn->setEnabled(false);
+    SendBtn->setEnabled(false);
 }
 void MainWindow::startPainting()
 {
@@ -321,29 +372,37 @@ void MainWindow::setvariables()
     QHBoxLayout *Dock2Layout1 = new QHBoxLayout();
     Dock2Layout1->addWidget(InitELabel);
     Dock2Layout1->addWidget(InitELineEdit);
+
     QHBoxLayout *Dock2Layout2 = new QHBoxLayout();
     Dock2Layout2->addWidget(FinalELabel);
     Dock2Layout2->addWidget(FinalELineEdit);
+
     QHBoxLayout *Dock2Layout3 = new QHBoxLayout();
     Dock2Layout3->addWidget(ScanRateLabel);
     Dock2Layout3->addWidget(ScanRateLineEdit);
+
     QHBoxLayout *Dock2Layout4 = new QHBoxLayout();
     Dock2Layout4->addWidget(ScanningDirectionLabel);
     Dock2Layout4->addWidget(ScanningDirectionComboBox);
+
     QHBoxLayout *Dock2Layout5 = new QHBoxLayout();
     Dock2Layout5->addWidget(GainLabel);
     Dock2Layout5->addWidget(GainLineEdit);
+
     QHBoxLayout *Dock2Layout6 = new QHBoxLayout();
     Dock2Layout6->addWidget(SampleIntervalLabel);
     Dock2Layout6->addWidget(SampleIntervalLineEdit);
+
     QHBoxLayout *Dock2Layout7 = new QHBoxLayout();
     Dock2Layout7->addWidget(QuietTimeLabel);
     Dock2Layout7->addWidget(QuietTimeLineEdit);
+
     QHBoxLayout *Dock2Layout8 = new QHBoxLayout();
     Dock2Layout8->addWidget(SendBtn);
     Dock2Layout8->addWidget(StartBtn);
     Dock2Layout8->addWidget(PauseBtn);
     Dock2Layout8->addWidget(Stop2Btn);
+
     QVBoxLayout *Dock2Layout = new QVBoxLayout;
     Dock2Layout->setAlignment(Qt::AlignCenter);
     Dock2Layout->addLayout(Dock2Layout1);
@@ -354,13 +413,14 @@ void MainWindow::setvariables()
     Dock2Layout->addLayout(Dock2Layout6);
     Dock2Layout->addLayout(Dock2Layout7);
     Dock2Layout->addLayout(Dock2Layout8);
+
     Dock2Layout->setSpacing(20);//设置间隙
     QWidget *Dock2Widget = new QWidget();
     Dock2Widget->setLayout(Dock2Layout);
     dock2->setWidget(Dock2Widget);
 
+    connect(SendBtn,SIGNAL(clicked()),this,SLOT(on_sendButtton_clicked()));
 
-    //connect(SendBtn,SIGNAL(clicked()),this,SLOT(on_SendButton_clicked()));
 }
 void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据；暂时让收发数据显示在这里，到后面可隐藏掉
 {
@@ -372,14 +432,20 @@ void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据
     dock3->setMinimumSize(1500,100);
     QHBoxLayout *Dock3Layout = new QHBoxLayout;
     StatusOfDock3 = new QTextEdit;
+    StatusOfDock3->setMinimumSize(300,200);
     SendInfo = new QTextEdit;
     ReceiveInfo = new QTextEdit;
+
     Dock3Layout->addWidget(StatusOfDock3);
     Dock3Layout->addWidget(SendInfo);
     Dock3Layout->addWidget(ReceiveInfo);
     QWidget *Dock3Widget = new QWidget();
     Dock3Widget->setLayout(Dock3Layout);
     dock3->setWidget(Dock3Widget);
+
+
+
+
 }
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -391,7 +457,7 @@ MainWindow::MainWindow(QWidget *parent)
     //initScene();
     QGraphicsView *view = new QGraphicsView;
     view->setScene(scene);
-    view->setMinimumSize(1000,800);
+    view->setMinimumSize(800,600);
     setCentralWidget(view);
     resize(1000,800);
     //创建动作、菜单、工具栏的函数

@@ -42,7 +42,6 @@ public:
     void createStatusBars();  //创建状态栏
     void loadFile(QString filename);   //??
     void mergeFormat(QTextCharFormat);  //??
-
     void setvariables();  //设置调试参数
     void startDeviceDiscovery();
     void deviceDiscovered();
@@ -50,21 +49,19 @@ public:
     void statusOfAll();
 private:
     //基本布局
-
     QGraphicsScene *scene;
-  //  QDockWidget *Dock1;
-  //  QDockWidget *Dock2;
     QStackedWidget *Stack1;
     QMenu *fileMenu;
     QMenu *zoomMenu;
     QImage img;
     QString filename;
     ShowWidget *showWidget;
-
-    QAction *OpenFileAction;    //文件菜单栏
+    //文件菜单栏
+    QAction *OpenFileAction;
     QAction *NewFileAction;
     QAction *ExitAction;
-    QAction *CopyAction;        //编辑菜单栏
+    //编辑菜单栏
+    QAction *CopyAction;
     QAction *CutAction;
     QAction *PasteAction;
     QAction *AboutAction;
@@ -93,6 +90,7 @@ private:
     QComboBox *ParityComBox;
     QLabel *StopBitsLabel;
     QComboBox *StopBitsComBox;
+
 
     //停靠窗口2，各种参数调整模块
     QLabel *InitELabel;
@@ -132,6 +130,7 @@ private slots:
     void on_clearButton_clicked();
     void on_sendButtton_clicked();
     void on_connectButton_clicked();
+    void on_breakButton_clicked();
     void Read_Data();
 };
 
