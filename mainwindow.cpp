@@ -181,7 +181,7 @@ void MainWindow::bluetooth()//蓝牙模块
         if(CurrentPort.open(QIODevice::ReadWrite))
         {
           BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
-          CurrentPort.close();
+          CurrentPort.close();   //先开再关，把串口名称先导入
         }
 
     }
@@ -209,29 +209,20 @@ void MainWindow::on_sendButtton_clicked()//发送数据
             StatusOfDock3->append("No message can be sent, Please write something");
      }
 
-    //StatusOfDock3->append(SendBytes);
-
-
-
     CurrentPort->write(SendBytes);
-
-
-     // QByteArray bufCeShi = CurrentPort->readAll();//Qbytearray类提供一个字节数组  ？？？？？？？这里出错了，读取不了数据(测试时加到这里的)
-
-    //StatusOfDock3->append(bufCeShi);
 }
 
 
 void MainWindow::Read_Data()//读取接收到的数据
 {
-    QByteArray buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
+    QByteArray buf;
+    buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
 
 
     if(!buf.isEmpty())
     {
-         //QString str = QString::fromLocal8Bit(buf);
-        QString str = ReceiveInfo->toPlainText().toUtf8();
-        str += QString(buf);//???
+        QString str = this->ReceiveInfo->toPlainText().toUtf8();
+        str += tr(buf);//???
         ReceiveInfo->clear();
         ReceiveInfo->append(str);
 
@@ -289,22 +280,21 @@ void MainWindow::on_connectButton_clicked()
         if(CurrentPort->isOpen())
         {
            StatusOfDock3->append("Succeesfully open the Port ");
+           //关闭设置菜单使能
+           BlueToothPortComboBox->setEnabled(false);
+           BaudRateComBox->setEnabled(false);
+           DateRateComBox->setEnabled(false);
+           ParityComBox->setEnabled(false);
+           StopBitsComBox->setEnabled(false);
+           ConnectBtn->setEnabled(false);
+           BreakBtn->setEnabled(true);
+           SendBtn->setEnabled(true);
         }
         else
         {
            StatusOfDock3->append("Defeatly open the port");
         }
 
-
-        //关闭设置菜单使能
-        BlueToothPortComboBox->setEnabled(false);
-        BaudRateComBox->setEnabled(false);
-        DateRateComBox->setEnabled(false);
-        ParityComBox->setEnabled(false);
-        StopBitsComBox->setEnabled(false);
-        ConnectBtn->setEnabled(false);
-        BreakBtn->setEnabled(true);
-        SendBtn->setEnabled(true);
         //连接信号槽
         QObject::connect(CurrentPort, &QSerialPort::readyRead, this, &MainWindow::Read_Data);
 
@@ -442,9 +432,6 @@ void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据
     QWidget *Dock3Widget = new QWidget();
     Dock3Widget->setLayout(Dock3Layout);
     dock3->setWidget(Dock3Widget);
-
-
-
 
 }
 MainWindow::MainWindow(QWidget *parent)
