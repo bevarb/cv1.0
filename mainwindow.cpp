@@ -15,6 +15,9 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QMessageBox>
 #include <QTimer>
+
+#include <synchapi.h>
+
 void MainWindow::createActions()
 {
     OpenFileAction = new QAction(QIcon("Open.png"),tr("Open"),this);
@@ -70,12 +73,7 @@ void MainWindow::createToolBars()
     Tool->setAllowedAreas(Qt::TopToolBarArea);
 
 }
-void MainWindow::createStatusBars()//状态栏，最下面一行，显示状态
-{
-    Status = statusBar();
-    Status->addWidget(new QLabel("2",this));
 
-}
 
 void MainWindow::showNewFile()//新建文件，这里需要修改
 {
@@ -106,8 +104,8 @@ void MainWindow::bluetooth()//蓝牙模块
 
     BaudRateLabel = new QLabel(tr("BaudRate: "));
     BaudRateComBox = new QComboBox;
-    BaudRateComBox->addItem(tr("11520"));
     BaudRateComBox->addItem(tr("9600"));
+    BaudRateComBox->addItem(tr("11520"));
 
     DateRateLabel = new QLabel(tr("DateRate: "));
     DateRateComBox = new QComboBox;
@@ -190,44 +188,198 @@ void MainWindow::bluetooth()//蓝牙模块
 
 }
 
-void MainWindow::on_clearButton_clicked()//清空发送与接收窗口信息
+void MainWindow::on_restartButton_clicked()//清空各个窗口信息，重新开始
 {
-    SendInfo->clear();
+    StatusOfDock3->clear();
     ReceiveInfo->clear();
+    MeasureComboBox->setEnabled(true);
+    InitELineEdit->setEnabled(true);
+    FinalELineEdit->setEnabled(true);
+    ScanRateLineEdit->setEnabled(true);
+    ScanningDirectionComboBox->setEnabled(true);
+    GainComboBox->setEnabled(true);
+    CorrectComboBox->setEnabled(true);
+    SampleIntervalLineEdit->setEnabled(true);
+    QuietTimeComboBox->setEnabled(true);
+    SendBtn->setText("Paste");
+    SendBtn->setEnabled(true);
 }
 
 
 void MainWindow::on_sendButtton_clicked()//发送数据
 {
+    if(SendBtn->text() == QString("Paste"))
+    {
+        MeasureComboBox->setEnabled(false);
+        InitELineEdit->setEnabled(false);
+        FinalELineEdit->setEnabled(false);
+        ScanRateLineEdit->setEnabled(false);
+        ScanningDirectionComboBox->setEnabled(false);
+        GainComboBox->setEnabled(false);
+        CorrectComboBox->setEnabled(false);
+        SampleIntervalLineEdit->setEnabled(false);
+        QuietTimeComboBox->setEnabled(false);
+        SendBtn->setText("Send");
+
+    }
+    else
+    {
+        SendBtn->setEnabled(false);
+        //发送 1 过去启动程序
+        QByteArray SendMethods = "1";
+        StatusOfDock3->append("Send message: ");
+        CurrentPort->write(SendMethods);SendMethods.clear();
+        Delay_MSec(1000);
+        //发送测量方式
+        if (MeasureComboBox->currentIndex() == 1)
+        {
+            QByteArray SendMethods = "0";//循环伏安法
+            StatusOfDock3->append(SendMethods);
+            CurrentPort->write(SendMethods);SendMethods.clear();
+        }
+        else
+        {
+            QByteArray SendMethods = "1";//参数测量
+            StatusOfDock3->append(SendMethods);
+            CurrentPort->write(SendMethods);SendMethods.clear();
+        }
+        Delay_MSec(1000);
+        //发送InitE
+        QByteArray SendBytesIL = InitELineEdit->text().toLatin1();
+        StatusOfDock3->append(SendBytesIL);
+        CurrentPort->write(SendBytesIL);SendBytesIL.clear();
+        Delay_MSec(1000);
+        //发送FinalE
+        QByteArray SendBytesFL = FinalELineEdit->text().toLatin1();
+        StatusOfDock3->append(SendBytesFL);
+        CurrentPort->write(SendBytesFL);SendBytesFL.clear();
+        Delay_MSec(1000);
+        //发送ScanRate
+        QByteArray SendBytesSL = ScanRateLineEdit->text().toLatin1();
+        StatusOfDock3->append(SendBytesSL);
+        CurrentPort->write(SendBytesSL);SendBytesSL.clear();
+        Delay_MSec(1000);
+        //发送ScanningDirection
+        if(ScanningDirectionComboBox->currentIndex() == 0)
+        {
+            QByteArray SendBytesDP = "1";    //发送Positive
+            StatusOfDock3->append(SendBytesDP);
+            CurrentPort->write(SendBytesDP);SendBytesDP.clear();
+        }
+        else
+        {
+            QByteArray SendBytesDP = "0";    //发送Negative
+            StatusOfDock3->append(SendBytesDP);
+            CurrentPort->write(SendBytesDP);SendBytesDP.clear();
+        }
+        Delay_MSec(1000);
+        //发送Gain
+        QByteArray SendBytesGL = GainComboBox->currentText().toLatin1();
+        StatusOfDock3->append(SendBytesGL);
+        CurrentPort->write(SendBytesGL);SendBytesGL.clear();
+        Delay_MSec(1000);
+        //发送是否纠正
+        if (CorrectComboBox->currentIndex() == 0)
+        {
+            QByteArray SendBytesCP = "1";    //发送On
+            StatusOfDock3->append(SendBytesCP);
+            CurrentPort->write(SendBytesCP);SendBytesCP.clear();
+        }
+        else
+        {
+            QByteArray SendBytesCP = "0";    //发送Off
+            StatusOfDock3->append(SendBytesCP);
+            CurrentPort->write(SendBytesCP);SendBytesCP.clear();
+        }
+        Delay_MSec(1000);
+        //发送SampleInterval
+        QByteArray SendBytesSIL = SampleIntervalLineEdit->text().toLatin1();
+        StatusOfDock3->append(SendBytesSIL);
+        CurrentPort->write(SendBytesSIL);SendBytesSIL.clear();
+        Delay_MSec(1000);
+        //发送QuietTime--这里需要设置延迟时间，当静息时间结束再开始接受数据
+        QByteArray SendBytesQTL = QuietTimeComboBox->currentText().toLatin1();
+        StatusOfDock3->append(SendBytesQTL);
+        CurrentPort->write(SendBytesQTL);
+        SendBytesQTL.clear();
+       // switch (QuietTimeComboBox->currentIndex())
+        //{
+        //case 0 :Delay_MSec(2);break;
+        //case 1 :Delay_MSec(3);break;
+       // case 2 :Delay_MSec(4);break;
+       // }
+    }
+
+   // if(SendBytes.isEmpty())//判断发送数据是否为空
+    // {
+   //         StatusOfDock3->append("No message can be sent, Please write something");
+  //   }
 
 
-    QByteArray SendBytes = SendInfo->toPlainText().toLatin1();//toPlainText(将文本编辑的文本转换为纯文本)
-
-
-    if(SendBytes.isEmpty())//判断发送数据是否为空
-     {
-            StatusOfDock3->append("No message can be sent, Please write something");
-     }
-
-    CurrentPort->write(SendBytes);
 }
+
+
+
 
 
 void MainWindow::Read_Data()//读取接收到的数据
 {
+
     QByteArray buf;
-    buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组,buf这里应该是缓冲数据的功能
+    buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组
 
-
-    if(!buf.isEmpty())
+    if (buf == "START")
     {
-        QString str = this->ReceiveInfo->toPlainText().toUtf8();
-        str += tr(buf);//???
-        ReceiveInfo->clear();
-        ReceiveInfo->append(str);
-
+        StatusOfDate->setText("START");
+        StatusOfDock3->append(buf);
+        buf.clear();
     }
-    buf.clear();
+    else if (buf == "END")
+    {
+        StatusOfDate->setText("END");//在绘图函数可以加一个if,当绘完图以后设置为"Ready"
+        StatusOfDock3->append(buf);
+        MeasureComboBox->setEnabled(true);
+        InitELineEdit->setEnabled(true);
+        FinalELineEdit->setEnabled(true);
+        ScanRateLineEdit->setEnabled(true);
+        ScanningDirectionComboBox->setEnabled(true);
+        GainComboBox->setEnabled(true);
+        CorrectComboBox->setEnabled(true);
+        SampleIntervalLineEdit->setEnabled(true);
+        QuietTimeComboBox->setEnabled(true);
+        SendBtn->setText("Paste");
+        SendBtn->setEnabled(true);
+        buf.clear();
+    }
+    if (!buf.isEmpty())
+    {
+        if(StatusOfDate->text() == "START")
+        {
+            QString str = this->ReceiveInfo->toPlainText().toUtf8();
+            str += tr(buf);
+            ReceiveInfo->clear();
+            ReceiveInfo->append(str);//buf.clear();
+        }
+        else
+        {
+            QString str = this->StatusOfDock3->toPlainText().toUtf8();
+            str += tr(buf);
+            StatusOfDock3->clear();
+            StatusOfDock3->append(str);//buf.clear();
+        }
+    }
+    //buf.clear();
+
+    //if(!buf.isEmpty())
+   // {
+    //    QString str = this->ReceiveInfo->toPlainText().toUtf8();
+    //    str += tr(buf);//???
+    //    ReceiveInfo->clear();
+
+    //    ReceiveInfo->append(str);
+
+    //}
+    //buf.clear();
 }
 
 
@@ -238,10 +390,10 @@ void MainWindow::on_connectButton_clicked()
         //设置波特率
         switch (BaudRateComBox->currentIndex())
         {
-         case 0: StatusOfDock3->append("Baud:115200");
-            CurrentPort->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections); break;
-         case 1: StatusOfDock3->append("Baud:9600");
+         case 0: StatusOfDock3->append("Baud:9600");
             CurrentPort->setBaudRate(QSerialPort::Baud9600,QSerialPort::AllDirections); break;
+         case 1: StatusOfDock3->append("Baud:115200");
+            CurrentPort->setBaudRate(QSerialPort::Baud115200,QSerialPort::AllDirections); break;
         default: break;
         }
 
@@ -334,64 +486,104 @@ void MainWindow::setvariables()
                                                                              //空白margain/边框border/填充padding/内容content
     addDockWidget(Qt::RightDockWidgetArea,dock2);
                   //设置各个Widget，进行填充
+    MeasureLabel = new QLabel(tr("Measure Methods: "));
+    MeasureComboBox = new QComboBox;
+    MeasureComboBox->addItem("Parameter Measurement");
+    MeasureComboBox->addItem("Cyclic Voltammetry");
     InitELabel = new QLabel(tr("Init E(V): "));
     InitELineEdit = new QLineEdit;
-    FinalELabel = new QLabel(tr("Final E(V): "));
-    FinalELineEdit = new QLineEdit;
-    ScanRateLabel = new QLabel(tr("Scan Rate (mV/s): "));
-    ScanRateLineEdit = new QLineEdit;
+
+    //QRegExp rx1("^-?(5|[0-0][\\.][0-9]{1,2})$");
+    //QRegExpValidator *pReg = new QRegExpValidator(rx1, this);
+    //InitELineEdit->setValidator(pReg);
+
+
+    //InitELineEdit->setValidator()
+    FinalELabel = new QLabel(tr("Final E(V): "));FinalELineEdit = new QLineEdit("0.6");
+    ScanRateLabel = new QLabel(tr("Scan Rate (mV/s): "));ScanRateLineEdit = new QLineEdit("50");
     ScanningDirectionLabel = new QLabel(tr("Scanning direction: "));
     ScanningDirectionComboBox = new QComboBox;
     ScanningDirectionComboBox->addItem(tr("Positive"));
     ScanningDirectionComboBox->addItem(tr("Negative"));
     GainLabel = new QLabel(tr("Gain : "));
-    GainLineEdit = new QLineEdit;
+    GainComboBox = new QComboBox;
+    GainComboBox->addItem("1000");
+    GainComboBox->addItem("5000");
+    GainComboBox->addItem("10000");
+    GainComboBox->addItem("50000");
+    GainComboBox->addItem("100000");
+    GainComboBox->addItem("500000");
+    GainComboBox->addItem("1000000");
+    GainComboBox->setCurrentIndex(2);
+    CorrectLabel = new QLabel("Correct");
+    CorrectComboBox = new QComboBox;
+    CorrectComboBox->addItem("On");
+    CorrectComboBox->addItem("Off");
+    CorrectComboBox->setCurrentIndex(1);
+
     SampleIntervalLabel = new QLabel(tr("Sample Interval (mv): "));
-    SampleIntervalLineEdit = new QLineEdit;
+    SampleIntervalLineEdit = new QLineEdit("1");
+    QRegExp rx("^?(20|[0-1]?\\d(\\.\\d{2})?)$");
+    SampleIntervalLineEdit->setValidator(new QRegExpValidator(rx, this));
+
     QuietTimeLabel = new QLabel(tr("Quiet Time: "));
-    QuietTimeLineEdit = new QLineEdit;
-    SendBtn = new QPushButton(tr("Send"));
-    StartBtn = new QPushButton(tr("Start"));
+    QuietTimeComboBox = new QComboBox;
+    QuietTimeComboBox->addItem("2");
+    QuietTimeComboBox->addItem("3");
+    QuietTimeComboBox->addItem("4");
+    SendBtn = new QPushButton(tr("Paste"));
+    SendBtn->setMaximumWidth(70);
+    ReStartBtn = new QPushButton(tr("ReStart"));
     PauseBtn = new QPushButton(tr("Pause"));
     Stop2Btn = new QPushButton(tr("Stop"));
     dock2->setStyleSheet("QPushButton{color:white;background-color:black}");//设置按钮样式
-    StartBtn->setMaximumWidth(50);
+    ReStartBtn->setMaximumWidth(70);
     PauseBtn->setMaximumWidth(50);
     Stop2Btn ->setMaximumWidth(50);
     //设置完各个控件进行布局，先水平布局再垂直布局
     QHBoxLayout *Dock2Layout1 = new QHBoxLayout();
-    Dock2Layout1->addWidget(InitELabel);
-    Dock2Layout1->addWidget(InitELineEdit);
+    Dock2Layout1->addWidget(MeasureLabel);
+    Dock2Layout1->addWidget(MeasureComboBox);
+
+
 
     QHBoxLayout *Dock2Layout2 = new QHBoxLayout();
-    Dock2Layout2->addWidget(FinalELabel);
-    Dock2Layout2->addWidget(FinalELineEdit);
+    Dock2Layout2->addWidget(InitELabel);
+    Dock2Layout2->addWidget(InitELineEdit);
 
     QHBoxLayout *Dock2Layout3 = new QHBoxLayout();
-    Dock2Layout3->addWidget(ScanRateLabel);
-    Dock2Layout3->addWidget(ScanRateLineEdit);
+    Dock2Layout3->addWidget(FinalELabel);
+    Dock2Layout3->addWidget(FinalELineEdit);
 
     QHBoxLayout *Dock2Layout4 = new QHBoxLayout();
-    Dock2Layout4->addWidget(ScanningDirectionLabel);
-    Dock2Layout4->addWidget(ScanningDirectionComboBox);
+    Dock2Layout4->addWidget(ScanRateLabel);
+    Dock2Layout4->addWidget(ScanRateLineEdit);
 
     QHBoxLayout *Dock2Layout5 = new QHBoxLayout();
-    Dock2Layout5->addWidget(GainLabel);
-    Dock2Layout5->addWidget(GainLineEdit);
+    Dock2Layout5->addWidget(ScanningDirectionLabel);
+    Dock2Layout5->addWidget(ScanningDirectionComboBox);
 
     QHBoxLayout *Dock2Layout6 = new QHBoxLayout();
-    Dock2Layout6->addWidget(SampleIntervalLabel);
-    Dock2Layout6->addWidget(SampleIntervalLineEdit);
+    Dock2Layout6->addWidget(GainLabel);
+    Dock2Layout6->addWidget(GainComboBox);
 
     QHBoxLayout *Dock2Layout7 = new QHBoxLayout();
-    Dock2Layout7->addWidget(QuietTimeLabel);
-    Dock2Layout7->addWidget(QuietTimeLineEdit);
+    Dock2Layout7->addWidget(CorrectLabel);
+    Dock2Layout7->addWidget(CorrectComboBox);
 
     QHBoxLayout *Dock2Layout8 = new QHBoxLayout();
-    Dock2Layout8->addWidget(SendBtn);
-    Dock2Layout8->addWidget(StartBtn);
-    Dock2Layout8->addWidget(PauseBtn);
-    Dock2Layout8->addWidget(Stop2Btn);
+    Dock2Layout8->addWidget(SampleIntervalLabel);
+    Dock2Layout8->addWidget(SampleIntervalLineEdit);
+
+    QHBoxLayout *Dock2Layout9 = new QHBoxLayout();
+    Dock2Layout9->addWidget(QuietTimeLabel);
+    Dock2Layout9->addWidget(QuietTimeComboBox);
+
+    QHBoxLayout *Dock2Layout10 = new QHBoxLayout();
+    Dock2Layout10->addWidget(SendBtn);
+    Dock2Layout10->addWidget(ReStartBtn);
+   // Dock2Layout8->addWidget(PauseBtn);
+   // Dock2Layout8->addWidget(Stop2Btn);
 
     QVBoxLayout *Dock2Layout = new QVBoxLayout;
     Dock2Layout->setAlignment(Qt::AlignCenter);
@@ -403,6 +595,8 @@ void MainWindow::setvariables()
     Dock2Layout->addLayout(Dock2Layout6);
     Dock2Layout->addLayout(Dock2Layout7);
     Dock2Layout->addLayout(Dock2Layout8);
+    Dock2Layout->addLayout(Dock2Layout9);
+    Dock2Layout->addLayout(Dock2Layout10);
 
     Dock2Layout->setSpacing(20);//设置间隙
     QWidget *Dock2Widget = new QWidget();
@@ -410,7 +604,9 @@ void MainWindow::setvariables()
     dock2->setWidget(Dock2Widget);
 
     connect(SendBtn,SIGNAL(clicked()),this,SLOT(on_sendButtton_clicked()));
-
+    connect(ReStartBtn,SIGNAL(clicked()),this,SLOT(on_restartButton_clicked()));
+    connect(GainComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
+        [=](){ CorrectComboBox->setCurrentIndex(0); });//增益改变就将校准设置为On
 }
 void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据；暂时让收发数据显示在这里，到后面可隐藏掉
 {
@@ -425,9 +621,9 @@ void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据
     StatusOfDock3->setMinimumSize(300,200);
     SendInfo = new QTextEdit;
     ReceiveInfo = new QTextEdit;
-
+SendInfo->document()->lineCount();
     Dock3Layout->addWidget(StatusOfDock3);
-    Dock3Layout->addWidget(SendInfo);
+   // Dock3Layout->addWidget(SendInfo);
     Dock3Layout->addWidget(ReceiveInfo);
     QWidget *Dock3Widget = new QWidget();
     Dock3Widget->setLayout(Dock3Layout);
@@ -463,5 +659,19 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+
+}
+//一些固定的槽函数
+void MainWindow::Delay_MSec(int msec)//非阻塞延迟，采用事件循环的方法
+{
+    QEventLoop loop;//定义一个新的事件循环
+    QTimer::singleShot(msec, &loop, SLOT(quit()));//创建单次定时器，槽函数为事件循环的退出函数
+    loop.exec();//事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
+}
+void MainWindow::createStatusBars()//状态栏，最下面一行，显示状态
+{
+    Status = statusBar();
+    StatusOfDate = new QLabel("Ready");
+    Status->addWidget(StatusOfDate);
 
 }

@@ -93,6 +93,7 @@ private:
 
 
     //停靠窗口2，各种参数调整模块
+    QLabel *MeasureLabel;
     QLabel *InitELabel;
     QLabel *FinalELabel;
     QLabel *ScanRateLabel;
@@ -100,15 +101,18 @@ private:
     QLabel *GainLabel;
     QLabel *SampleIntervalLabel;
     QLabel *QuietTimeLabel;
+    QLabel *CorrectLabel;
     QLineEdit *InitELineEdit;
     QLineEdit *FinalELineEdit;
     QLineEdit *ScanRateLineEdit;
-    QComboBox *ScanningDirectionComboBox;
-    QLineEdit *GainLineEdit;
     QLineEdit *SampleIntervalLineEdit;
-    QLineEdit *QuietTimeLineEdit;
+    QComboBox *MeasureComboBox;
+    QComboBox *ScanningDirectionComboBox;
+    QComboBox *GainComboBox;
+    QComboBox *CorrectComboBox;
+    QComboBox *QuietTimeComboBox;
     QPushButton *SendBtn;
-    QPushButton *StartBtn;
+    QPushButton *ReStartBtn;
     QPushButton *PauseBtn;
     QPushButton *Stop2Btn;
     QButtonGroup *Dock2Group;
@@ -119,6 +123,8 @@ private:
     QTextEdit *SendInfo;
     QTextEdit *ReceiveInfo;
 
+    QLabel *StatusOfDate;
+
 
 protected slots:
     void showNewFile();
@@ -126,12 +132,16 @@ protected slots:
     void showZoomOut();
     void startPainting();
     void stopPainting();
+
 private slots:
-    void on_clearButton_clicked();
+ //   void on_clearButton_clicked();
     void on_sendButtton_clicked();
+    void on_restartButton_clicked();
     void on_connectButton_clicked();
     void on_breakButton_clicked();
     void Read_Data();
+    void Delay_MSec(int msec);
+
 };
 
 #endif // MAINWINDOW_H
