@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/style">
+        <file>style.qss</file>
+    </qresource>
+    <qresource prefix="/ICON">
+        <file>ICON/OpenFile.png</file>
+        <file>ICON/PasteFile.png</file>
+        <file>ICON/Run.png</file>
+        <file>ICON/Serch.png</file>
+    </qresource>
+</RCC>

@@ -23,12 +23,17 @@
 #include <QGraphicsScene>
 #include <QGraphicsView>
 #include <QGraphicsEllipseItem>
-
-#include <QTableWidget>
 #include <QtSerialPort/QSerialPort>
-//#include <QtCharts/QXYSeries>
-
 #include "showwidget.h"
+
+
+extern QString alldata;
+
+extern int Flag_isOpen;       //标记：判断是否打开或创建了一个文件
+extern int Flag_IsNew;        //标记：如果新建了文件就为1，初始值为0
+extern QString Last_FileName;     //最后一次保存的文件的名字
+extern QString Last_FileContent;  //最后一次保存文件的内容
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -47,6 +52,7 @@ public:
     void deviceDiscovered();
     void bluetooth();
     void statusOfAll();
+
 private:
     //基本布局
     QGraphicsScene *scene;
@@ -55,13 +61,19 @@ private:
     QMenu *zoomMenu;
     QImage img;
     QString filename;
+
+
     ShowWidget *showWidget;
+
+    QPushButton *SendBtn;
     //文件菜单栏
-    QAction *OpenFileAction;
-    QAction *NewFileAction;
+    QAction *OpenFileAction; //打开文件
+    QAction *NewFileAction; //新建文件
     QAction *ExitAction;
+    QAction *SaveAction; //保存文件
+    QAction *SaveAsAction; //另存为文件
     //编辑菜单栏
-    QAction *CopyAction;
+
     QAction *CutAction;
     QAction *PasteAction;
     QAction *AboutAction;
@@ -80,7 +92,9 @@ private:
     QComboBox *BlueToothPortComboBox;
     QPushButton *ConnectBtn;
     QPushButton *BreakBtn;
-    QPushButton *Stop1Btn;
+    QPushButton *serchBtn;
+
+
     QSerialPort *CurrentPort;
     QLabel *BaudRateLabel;
     QComboBox *BaudRateComBox;
@@ -111,7 +125,7 @@ private:
     QComboBox *GainComboBox;
     QComboBox *CorrectComboBox;
     QComboBox *QuietTimeComboBox;
-    QPushButton *SendBtn;
+
     QPushButton *ReStartBtn;
     QPushButton *PauseBtn;
     QPushButton *Stop2Btn;
@@ -124,14 +138,19 @@ private:
     QTextEdit *ReceiveInfo;
 
     QLabel *StatusOfDate;
+   // void buf_Signal(QString allData);
 
+signals:
+    void send_Signal(QString Send);
+    void send_Axis(double x,double y);
+    void send_Restart();
 
 protected slots:
-    void showNewFile();
-    void showZoomIn();
-    void showZoomOut();
-    void startPainting();
-    void stopPainting();
+    void showNewFile();   //打开新文件，其实就清空各项内容，发送restart信号，保存文件还是用Save
+    void showOpenFile();  //***__实现了打开文件的功能，并读取数据到状态栏上   还没有实现： 将数据添加到plot上
+    void showSaveFile();  //√ 能够保存文本信息到txt文件上
+    void showSaveFileAs(); //
+    void axis_Signal();
 
 private slots:
  //   void on_clearButton_clicked();
@@ -139,6 +158,7 @@ private slots:
     void on_restartButton_clicked();
     void on_connectButton_clicked();
     void on_breakButton_clicked();
+    void on_serchButton_clicked();
     void Read_Data();
     void Delay_MSec(int msec);
 

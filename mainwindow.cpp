@@ -8,7 +8,7 @@
 #include <QGridLayout>
 #include <QtGui>
 #include <QLabel>
-#include <QFileDialog>
+#include <QFileDialog>    //文件对话窗
 #include <QAction>
 #include <QDebug>
 #include <QtSerialPort/QSerialPort>
@@ -16,90 +16,240 @@
 #include <QMessageBox>
 #include <QTimer>
 
-#include <synchapi.h>
+#include "showwidget.h"
+
+#include <QVector>
+#include <QFile>
+#include <QTextStream>
 
 void MainWindow::createActions()
 {
-    OpenFileAction = new QAction(QIcon("Open.png"),tr("Open"),this);
+    OpenFileAction = new QAction(QIcon(":/ICON/ICON/OpenFile.png"),tr("Open"),this);
     OpenFileAction->setShortcut(tr("Ctrl+O"));
     OpenFileAction->setStatusTip(tr("Open one file"));
-    connect(OpenFileAction,&QAction::triggered,[=] ()
-    {
-          QString path = QFileDialog::getOpenFileName(
-                      this,"open","../",
-                      "souce(*.cpp *.h);;Text(*.txt);;All(*.*)");
-    }
-            );
+    connect(OpenFileAction,SIGNAL(triggered()),this,SLOT(showOpenFile()));
+
+
+
     NewFileAction = new QAction(QIcon("Open.png"),tr("New"),this);
     NewFileAction->setShortcut(tr("Ctrl+N"));
     NewFileAction->setStatusTip(tr("Build one new file"));
     connect(NewFileAction,SIGNAL(triggered()),this,SLOT(showNewFile()));
+
+    SaveAction = new QAction(QIcon(":/ICON/ICON/PasteFile.png"),tr("Save"),this);
+    SaveAction->setShortcut(tr("Ctrl+Q"));
+    SaveAction->setStatusTip(tr("Save this file"));
+    connect(SaveAction,SIGNAL(triggered()),this,SLOT(showSaveFile()));
+
+    SaveAsAction = new QAction(QIcon(":/ICON/ICON/PasteFile.png"),tr("Save as..."),this);
+    SaveAsAction->setShortcut(tr("Ctrl+S"));
+    SaveAsAction->setStatusTip(tr("Save this file as somewhere"));
+    connect(SaveAsAction,SIGNAL(triggered()),this,SLOT(showSaveFileAs()));
+
+
     ExitAction = new QAction(QIcon("Open.png"),tr("Exit"),this);
     ExitAction->setShortcut(tr("Ctrl+N"));
     ExitAction->setStatusTip(tr("Exit"));
-    CopyAction = new QAction(QIcon("Open.png"),tr("Copy"),this);
-    CopyAction->setShortcut(tr("Ctrl+Q"));
-    CopyAction->setStatusTip(tr("Exit"));
-    //connect(CopyAction,SIGNAL(triggered()),showWidget->text,SLOT(copy()));
-    CutAction = new QAction(QIcon("Open.png"),tr("Cut"),this);
-    CutAction->setShortcut(tr("Crtl+C"));
-    //connect(CutAction,SIGNAL(triggered()),showWidget->text,SLOT(cut()));
-    PasteAction = new QAction(QIcon("Open.png"),tr("Paste"),this);
-    PasteAction->setShortcut(tr("Ctrl+V"));
-    //connect(PasteAction,SIGNAL(triggered()),showWidget->text,SLOT(paste()));
-    ZoomInAction = new QAction(QIcon("Open.png"),tr("ZoomIn"),this);
-    connect(ZoomInAction,SIGNAL(triggered()),this,SLOT(showZoomIn()));
-    ZoomOutAction = new QAction(QIcon("Open.png"),tr("ZoomOut"),this);
-    connect(ZoomOutAction,SIGNAL(triggered()),this,SLOT(showZoomOut()));//图标未设置，均采用open.png
+
+
 
 }
-void MainWindow::createMenus()
+void MainWindow::createMenus()//菜单栏添加动作
 {
     fileMenu = menuBar()->addMenu(tr("File"));
     fileMenu->addAction(OpenFileAction);
     fileMenu->addAction(NewFileAction);
+    fileMenu->addAction(SaveAction);
+    fileMenu->addAction(SaveAsAction);
     fileMenu->addSeparator();
     fileMenu->addAction(ExitAction);
 
 }
-void MainWindow::createToolBars()
+void MainWindow::createToolBars()//工具栏添加动作
 {
     Tool = addToolBar("Tool");
-    Tool->addAction(CopyAction);
-    Tool->addAction(CutAction);
-    Tool->addAction(PasteAction);
-    Tool->addAction(ZoomInAction);
-    Tool->addAction(ZoomOutAction);
+    Tool->addAction(SaveAction);
+    Tool->addAction(SaveAsAction);
+
     Tool->setAllowedAreas(Qt::TopToolBarArea);
 
 }
 
+int Flag_isOpen = 0;       //标记：判断是否打开或创建了一个文件
+int Flag_IsNew = 0;        //标记：如果新建了文件就为1，初始值为0
+QString Last_FileName;     //最后一次保存的文件的名字
+QString Last_FileContent;  //最后一次保存文件的内容
 
 void MainWindow::showNewFile()//新建文件，这里需要修改
 {
-    MainWindow *newFile = new MainWindow;
-    newFile->show();
+    StatusOfDock3->clear();              //清除原先文件内容
+
+    Flag_IsNew = 1;                 //新文件标记位设为1
+    Flag_isOpen = 1;                //新文件创建 标记位设为1
 }
-void MainWindow::showZoomIn()//下面这两个要修改，能够将实时图像放大或者缩小
+
+void MainWindow::showOpenFile()//下
 {
 
-}
-void MainWindow::showZoomOut()//
-{
+       QString fileName;
+       fileName = QFileDialog::getOpenFileName(this,tr("Open File"),tr(""),tr("Text File (*.txt)"));
+       if(fileName == "")                  //如果用户直接关闭了文件浏览对话框，那么文件名就为空值，直接返回
+       {
+           return;
+       }
+       else
+       {
+          QFile file(fileName);
+          if(!file.open(QIODevice::ReadOnly | QIODevice::Text))
+          {
+              QMessageBox::warning(this,tr("错误"),tr("打开文件失败"));
+              return;
+          }
+          else
+          {
+              if(!file.isReadable())
+              {
+                  QMessageBox::warning(this,tr("错误"),tr("该文件不可读"));
+              }
+              else
+              {
+                  QTextStream textStream(&file);       //读取文件，使用QTextStream
+                  while(!textStream.atEnd())
+                  {
+                      StatusOfDock3->clear();
+                      StatusOfDock3->setPlainText(textStream.readAll());
 
+
+
+
+                  }
+                  //textEdit->show();
+                  file.close();
+                  Flag_isOpen = 1;
+                  Last_FileName = fileName;
+              }
+          }
+       }
+       QObject::connect(this,SIGNAL(send_Signal(QString)),showWidget,SLOT(receive_Data(QString)));
+       alldata=StatusOfDock3->toPlainText();
+       emit send_Signal(alldata);
+       QObject::disconnect(this,SIGNAL(send_Signal(QString)),showWidget,SLOT(receive_Data(QString)));
+
+}
+
+void MainWindow::showSaveFile()
+{
+    if(Flag_IsNew)                  //如果新文件标记位为1，则弹出保存文件对话框
+    {
+        if(StatusOfDock3->toPlainText() == "")
+        {
+            QMessageBox::warning(this,tr("Warning"),tr("The information you want to save can't be empty!"),QMessageBox::Ok);
+        }
+        else
+        {
+            QFileDialog fileDialog;
+            QString str = fileDialog.getSaveFileName(this,tr("Open File"),"/home",tr("Text File(*.txt)"));
+            if(str == "")
+            {
+                return;
+            }
+            QFile filename(str);
+            if(!filename.open(QIODevice::WriteOnly | QIODevice::Text))
+            {
+                QMessageBox::warning(this,tr("Error"),tr("Failed to open the file!"),QMessageBox::Ok);
+                return;
+            }
+            else
+            {
+                QTextStream textStream(&filename);
+                QString str = StatusOfDock3->toPlainText();
+                textStream<<str;
+                Last_FileContent = str;
+            }
+            QMessageBox::information(this,"保存文件","保存文件成功",QMessageBox::Ok);
+            filename.close();
+            Flag_IsNew = 0;     //新文件标记位记为0
+            Last_FileName = str;//保存文件内容
+        }
+    }
+    else                        //否则，新文件标记位是0，代表是旧文件，默认直接保存覆盖源文件
+    {
+        if(Flag_isOpen)         //判断是否创建或打开了一个文件
+        {
+            QFile file(Last_FileName);
+            if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+            {
+                QMessageBox::warning(this,tr("Warning"),tr("Failed to open the file!"));
+                return;
+            }
+            else
+            {
+                QTextStream textStream(&file);
+                QString str = StatusOfDock3->toPlainText();
+                textStream<<str;
+                Last_FileContent = str;
+                file.close();
+            }
+        }
+        else
+        {
+            QMessageBox::warning(this,tr("Warning"),tr("Please open or new an file"));
+            return;
+        }
+    }
+
+}
+
+void MainWindow::showSaveFileAs()      //另存为
+{
+    QFileDialog fileDialog;
+    QString fileName = fileDialog.getSaveFileName(this,tr("Open File"),"/home",tr("Text File(*.txt)"));
+    if(fileName == "")
+    {
+        return;
+    }
+    QFile file(fileName);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Text))
+    {
+        QMessageBox::warning(this,tr("错误"),tr("打开文件失败"));
+        return;
+    }
+    else
+    {
+        QTextStream textStream(&file);
+        QString str = StatusOfDock3->toPlainText();
+        textStream<<str;
+        QMessageBox::warning(this,tr("提示"),tr("保存文件成功"));
+        Last_FileContent = str;
+        Last_FileName = fileName;
+        Flag_IsNew = 0;
+        file.close();
+    }
 }
 void MainWindow::bluetooth()//蓝牙模块
 {
-    QDockWidget *dock1 = new QDockWidget(tr("DockWindow1"));
+    QDockWidget *dock1 = new QDockWidget(tr("SerialPort Settings"));
+
     dock1->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock1->setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
+   // dock1->setFont(QFont::Bo);//设置字体
+  //  dock1->setStyleSheet("QComboBox{color:Black;background-color:rgb(250,246,235)}");//ComboBox样式设置
+
 
     addDockWidget(Qt::RightDockWidgetArea,dock1);
-    dock1->setStyleSheet("QPushButton{color:white;background-color:black}");//按钮样式设置
+
     BlueToothLabel = new QLabel(tr("Port name: "));
     ConnectBtn = new QPushButton("Connect");
     BreakBtn = new QPushButton(tr("Break"));
-    Stop1Btn = new QPushButton(tr("Stop"));
+
+    serchBtn = new QPushButton;
+    QIcon serch_ico(":/ICON/ICON/Serch.png");
+    serchBtn->setMinimumSize(20,20);
+    serchBtn->setMaximumSize(20,20);
+    serchBtn->setIcon(serch_ico);
+    serchBtn->setIconSize(QSize(20,20));
+
+
     BlueToothPortComboBox = new QComboBox;
 
     BaudRateLabel = new QLabel(tr("BaudRate: "));
@@ -132,6 +282,7 @@ void MainWindow::bluetooth()//蓝牙模块
     Dock1Layout1->addWidget(BlueToothLabel);
     Dock1Layout1->addWidget(BlueToothPortComboBox);
 
+
     QHBoxLayout *Dock1Layout2 = new QHBoxLayout();
     Dock1Layout2->addWidget(BaudRateLabel);
     Dock1Layout2->addWidget(BaudRateComBox);
@@ -149,6 +300,7 @@ void MainWindow::bluetooth()//蓝牙模块
     Dock1Layout5->addWidget(StopBitsComBox);
 
     QHBoxLayout *Dock1Layout6 = new QHBoxLayout();
+    Dock1Layout6->addWidget(serchBtn);
     Dock1Layout6->addWidget(ConnectBtn);//点击后就开始寻找设备进行连接
     Dock1Layout6->addWidget(BreakBtn);//点击后断开串口连接
  //   Dock1Layout6->addWidget(Stop1Btn);//暂时未用到
@@ -169,23 +321,45 @@ void MainWindow::bluetooth()//蓝牙模块
 
     ConnectBtn->setMinimumWidth(70);
     BreakBtn->setMaximumWidth(50);
-    Stop1Btn ->setMaximumWidth(50);
 
-    //搜索串口，并添加到选项上供使用者选择
+
+
+
+    connect(ConnectBtn, SIGNAL(clicked()),this,SLOT(on_connectButton_clicked()));
+    connect(BreakBtn, SIGNAL(clicked()),this,SLOT(on_breakButton_clicked()));
+    connect(serchBtn,SIGNAL(clicked()),this,SLOT(on_serchButton_clicked()));
+
     foreach(const QSerialPortInfo &Info,QSerialPortInfo ::availablePorts())
     {
         QSerialPort CurrentPort;
         CurrentPort.setPort(Info);
         if(CurrentPort.open(QIODevice::ReadWrite))
         {
+
           BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
           CurrentPort.close();   //先开再关，把串口名称先导入
         }
 
     }
-    connect(ConnectBtn, SIGNAL(clicked()),this,SLOT(on_connectButton_clicked()));
-    connect(BreakBtn, SIGNAL(clicked()),this,SLOT(on_breakButton_clicked()));
 
+}
+void MainWindow::on_serchButton_clicked()//搜索串口，并添加到选项上供使用者选择
+{
+
+    BlueToothPortComboBox->clear();
+
+    foreach(const QSerialPortInfo &Info,QSerialPortInfo ::availablePorts())
+    {
+        QSerialPort CurrentPort;
+        CurrentPort.setPort(Info);
+        if(CurrentPort.open(QIODevice::ReadWrite))
+        {
+
+          BlueToothPortComboBox->addItem(CurrentPort.portName());//插入串口的名字
+          CurrentPort.close();   //先开再关，把串口名称先导入
+        }
+
+    }
 }
 
 void MainWindow::on_restartButton_clicked()//清空各个窗口信息，重新开始
@@ -203,6 +377,9 @@ void MainWindow::on_restartButton_clicked()//清空各个窗口信息，重新�
     QuietTimeComboBox->setEnabled(true);
     SendBtn->setText("Paste");
     SendBtn->setEnabled(true);
+   QObject::disconnect(SendBtn,SIGNAL(clicked()),this,SLOT(axis_Signal()));
+
+   alldata.clear();
 }
 
 
@@ -220,6 +397,8 @@ void MainWindow::on_sendButtton_clicked()//发送数据
         SampleIntervalLineEdit->setEnabled(false);
         QuietTimeComboBox->setEnabled(false);
         SendBtn->setText("Send");
+        alldata.clear();
+        emit send_Restart();
 
     }
     else
@@ -302,12 +481,6 @@ void MainWindow::on_sendButtton_clicked()//发送数据
         StatusOfDock3->append(SendBytesQTL);
         CurrentPort->write(SendBytesQTL);
         SendBytesQTL.clear();
-       // switch (QuietTimeComboBox->currentIndex())
-        //{
-        //case 0 :Delay_MSec(2);break;
-        //case 1 :Delay_MSec(3);break;
-       // case 2 :Delay_MSec(4);break;
-       // }
     }
 
    // if(SendBytes.isEmpty())//判断发送数据是否为空
@@ -315,26 +488,35 @@ void MainWindow::on_sendButtton_clicked()//发送数据
    //         StatusOfDock3->append("No message can be sent, Please write something");
   //   }
 
-
 }
 
-
+QString alldata;
 
 
 
 void MainWindow::Read_Data()//读取接收到的数据
 {
 
+    //从串口读取所有准备好的数据
     QByteArray buf;
     buf = CurrentPort->readAll();//Qbytearray类提供一个字节数组
 
-    if (buf == "START")
+    alldata += tr(buf);
+
+
+    QObject::connect(this,SIGNAL(send_Signal(QString)),showWidget,SLOT(receive_Data(QString)));
+    emit send_Signal(alldata);
+
+
+
+    //receive_Data(alldata);
+
+    if (buf.contains("START"))//如果数据流中包含开始关键词，则清空原有数据
     {
         StatusOfDate->setText("START");
-        StatusOfDock3->append(buf);
-        buf.clear();
     }
-    else if (buf == "END")
+
+    if (buf.contains("END"))
     {
         StatusOfDate->setText("END");//在绘图函数可以加一个if,当绘完图以后设置为"Ready"
         StatusOfDock3->append(buf);
@@ -350,36 +532,18 @@ void MainWindow::Read_Data()//读取接收到的数据
         SendBtn->setText("Paste");
         SendBtn->setEnabled(true);
         buf.clear();
-    }
-    if (!buf.isEmpty())
+    }   
+
+    if (!buf.isEmpty())//只要buf不空，就将其信息显示在状态栏
     {
-        if(StatusOfDate->text() == "START")
-        {
-            QString str = this->ReceiveInfo->toPlainText().toUtf8();
-            str += tr(buf);
-            ReceiveInfo->clear();
-            ReceiveInfo->append(str);//buf.clear();
-        }
-        else
-        {
-            QString str = this->StatusOfDock3->toPlainText().toUtf8();
-            str += tr(buf);
-            StatusOfDock3->clear();
-            StatusOfDock3->append(str);//buf.clear();
-        }
+         QString str = this->StatusOfDock3->toPlainText().toUtf8();
+         str += tr(buf);
+         StatusOfDock3->clear();
+         StatusOfDock3->append(str);//buf.clear();
     }
-    //buf.clear();
 
-    //if(!buf.isEmpty())
-   // {
-    //    QString str = this->ReceiveInfo->toPlainText().toUtf8();
-    //    str += tr(buf);//???
-    //    ReceiveInfo->clear();
 
-    //    ReceiveInfo->append(str);
-
-    //}
-    //buf.clear();
+    buf.clear();
 }
 
 
@@ -468,14 +632,9 @@ void MainWindow::on_breakButton_clicked()
     BreakBtn->setEnabled(false);
     SendBtn->setEnabled(false);
 }
-void MainWindow::startPainting()
-{
 
-}
-void MainWindow::stopPainting()
-{
 
-}
+// //停靠窗口2的设置！！！
 void MainWindow::setvariables()
 {
     //停靠窗口2，调整各种变量
@@ -491,7 +650,7 @@ void MainWindow::setvariables()
     MeasureComboBox->addItem("Parameter Measurement");
     MeasureComboBox->addItem("Cyclic Voltammetry");
     InitELabel = new QLabel(tr("Init E(V): "));
-    InitELineEdit = new QLineEdit;
+    InitELineEdit = new QLineEdit("0");
 
     //QRegExp rx1("^-?(5|[0-0][\\.][0-9]{1,2})$");
     //QRegExpValidator *pReg = new QRegExpValidator(rx1, this);
@@ -499,7 +658,7 @@ void MainWindow::setvariables()
 
 
     //InitELineEdit->setValidator()
-    FinalELabel = new QLabel(tr("Final E(V): "));FinalELineEdit = new QLineEdit("0.6");
+    FinalELabel = new QLabel(tr("Final E(V): "));FinalELineEdit = new QLineEdit("0.2");
     ScanRateLabel = new QLabel(tr("Scan Rate (mV/s): "));ScanRateLineEdit = new QLineEdit("50");
     ScanningDirectionLabel = new QLabel(tr("Scanning direction: "));
     ScanningDirectionComboBox = new QComboBox;
@@ -607,7 +766,20 @@ void MainWindow::setvariables()
     connect(ReStartBtn,SIGNAL(clicked()),this,SLOT(on_restartButton_clicked()));
     connect(GainComboBox, QOverload<int>::of(&QComboBox::currentIndexChanged),
         [=](){ CorrectComboBox->setCurrentIndex(0); });//增益改变就将校准设置为On
+
+
+    QObject::connect(ReStartBtn,SIGNAL(clicked()),showWidget,SLOT(on_restart_clicked()));
+    QObject::connect(this,SIGNAL(send_Restart()),showWidget,SLOT(on_restart_clicked()));
+     //connect(SendBtn,SIGNAL(clicked()),this,SLOT(Get_Date));
 }
+void MainWindow::axis_Signal()
+{
+    double x = InitELineEdit->text().toDouble();
+    double y = FinalELineEdit->text().toDouble();
+    emit send_Axis(x,y);
+}
+
+
 void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据；暂时让收发数据显示在这里，到后面可隐藏掉
 {
     //停靠窗口3，显示图像各种参数
@@ -619,11 +791,8 @@ void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据
     QHBoxLayout *Dock3Layout = new QHBoxLayout;
     StatusOfDock3 = new QTextEdit;
     StatusOfDock3->setMinimumSize(300,200);
-    SendInfo = new QTextEdit;
     ReceiveInfo = new QTextEdit;
-SendInfo->document()->lineCount();
     Dock3Layout->addWidget(StatusOfDock3);
-   // Dock3Layout->addWidget(SendInfo);
     Dock3Layout->addWidget(ReceiveInfo);
     QWidget *Dock3Widget = new QWidget();
     Dock3Widget->setLayout(Dock3Layout);
@@ -638,11 +807,13 @@ MainWindow::MainWindow(QWidget *parent)
     scene = new QGraphicsScene;
     scene->setSceneRect(-200,-200,400,400);
     //initScene();
-    QGraphicsView *view = new QGraphicsView;
-    view->setScene(scene);
-    view->setMinimumSize(800,600);
-    setCentralWidget(view);
+    showWidget = new ShowWidget(this);
+    //QGraphicsView *view = new QGraphicsView;
+   // view->setScene(showWidget);
+   // view->setMinimumSize(800,600);
+    setCentralWidget(showWidget);
     resize(1000,800);
+
     //创建动作、菜单、工具栏的函数
     createActions();
     createMenus();
@@ -653,7 +824,6 @@ MainWindow::MainWindow(QWidget *parent)
     setvariables();
     statusOfAll();
     //创建坐标轴
-
 
 }
 
