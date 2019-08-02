@@ -30,12 +30,14 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
         qcustomplot.cpp \
-        showwidget.cpp
+        showwidget.cpp \
+        thread.cpp
 
 HEADERS += \
         mainwindow.h \
         qcustomplot.h \
-        showwidget.h
+        showwidget.h \
+        thread.h
 
 
 

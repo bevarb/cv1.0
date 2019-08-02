@@ -25,6 +25,8 @@
 #include <QGraphicsEllipseItem>
 #include <QtSerialPort/QSerialPort>
 #include "showwidget.h"
+#include "thread.h"
+
 
 
 extern QString alldata;
@@ -62,8 +64,8 @@ private:
     QImage img;
     QString filename;
 
-
-    ShowWidget *showWidget;
+    Thread *thread;//引用子类
+    ShowWidget *showWidget;//引用子类
 
     QPushButton *SendBtn;
     //文件菜单栏
@@ -140,10 +142,16 @@ private:
     QLabel *StatusOfDate;
    // void buf_Signal(QString allData);
 
+    void startObjThread();
+    QThread *dataThread;
+
 signals:
     void send_Signal(QString Send);
     void send_Axis(double x,double y);
     void send_Restart();
+
+    void start_ObjThread_Work1(QString);
+    void send_To_Paint(double,double,int);//将数据传递到绘图子类
 
 protected slots:
     void showNewFile();   //打开新文件，其实就清空各项内容，发送restart信号，保存文件还是用Save
@@ -151,6 +159,7 @@ protected slots:
     void showSaveFile();  //√ 能够保存文本信息到txt文件上
     void showSaveFileAs(); //
     void axis_Signal();
+
 
 private slots:
  //   void on_clearButton_clicked();
@@ -162,6 +171,12 @@ private slots:
     void Read_Data();
     void Delay_MSec(int msec);
 
+  //  void onButtonObjectMove2ThreadClicked();
+
+  //  void onButtonObjectQuitClicked();
+    void close_Thread();
+    void finish_Thread_Slot();
+    void send_Data_Signal(double,double ,int);
 };
 
 #endif // MAINWINDOW_H

@@ -226,6 +226,7 @@ void MainWindow::showSaveFileAs()      //另存为
         file.close();
     }
 }
+
 void MainWindow::bluetooth()//蓝牙模块
 {
     QDockWidget *dock1 = new QDockWidget(tr("SerialPort Settings"));
@@ -343,6 +344,7 @@ void MainWindow::bluetooth()//蓝牙模块
     }
 
 }
+
 void MainWindow::on_serchButton_clicked()//搜索串口，并添加到选项上供使用者选择
 {
 
@@ -380,8 +382,8 @@ void MainWindow::on_restartButton_clicked()//清空各个窗口信息，重新�
    QObject::disconnect(SendBtn,SIGNAL(clicked()),this,SLOT(axis_Signal()));
 
    alldata.clear();
+   close_Thread();//restart就直接关闭线程
 }
-
 
 void MainWindow::on_sendButtton_clicked()//发送数据
 {
@@ -481,6 +483,12 @@ void MainWindow::on_sendButtton_clicked()//发送数据
         StatusOfDock3->append(SendBytesQTL);
         CurrentPort->write(SendBytesQTL);
         SendBytesQTL.clear();
+
+
+        //按下send按钮就启动线程
+
+         startObjThread();
+
     }
 
    // if(SendBytes.isEmpty())//判断发送数据是否为空
@@ -492,8 +500,6 @@ void MainWindow::on_sendButtton_clicked()//发送数据
 
 QString alldata;
 
-
-
 void MainWindow::Read_Data()//读取接收到的数据
 {
 
@@ -503,17 +509,14 @@ void MainWindow::Read_Data()//读取接收到的数据
 
     alldata += tr(buf);
 
-
-    QObject::connect(this,SIGNAL(send_Signal(QString)),showWidget,SLOT(receive_Data(QString)));
-    emit send_Signal(alldata);
+    emit start_ObjThread_Work1(alldata);//主线程通过信号 传递到 子线程的槽函数
 
 
-
-    //receive_Data(alldata);
-
-    if (buf.contains("START"))//如果数据流中包含开始关键词，则清空原有数据
+    if (buf.contains("START"))//如果数据流中包含开始关键词，则设置数据收发状态START
     {
         StatusOfDate->setText("START");
+        StatusOfDock3->clear();
+        StatusOfDock3->append(alldata);
     }
 
     if (buf.contains("END"))
@@ -531,21 +534,17 @@ void MainWindow::Read_Data()//读取接收到的数据
         QuietTimeComboBox->setEnabled(true);
         SendBtn->setText("Paste");
         SendBtn->setEnabled(true);
+
+        qDebug()<<tr("关闭线程");
+        close_Thread();
+
+        StatusOfDock3->clear();
+        StatusOfDock3->append(alldata);
         buf.clear();
     }   
 
-    if (!buf.isEmpty())//只要buf不空，就将其信息显示在状态栏
-    {
-         QString str = this->StatusOfDock3->toPlainText().toUtf8();
-         str += tr(buf);
-         StatusOfDock3->clear();
-         StatusOfDock3->append(str);//buf.clear();
-    }
-
-
     buf.clear();
 }
-
 
 void MainWindow::on_connectButton_clicked()
 {
@@ -615,6 +614,7 @@ void MainWindow::on_connectButton_clicked()
         QObject::connect(CurrentPort, &QSerialPort::readyRead, this, &MainWindow::Read_Data);
 
 }
+
 void MainWindow::on_breakButton_clicked()
 {
     //关闭串口
@@ -632,13 +632,12 @@ void MainWindow::on_breakButton_clicked()
     BreakBtn->setEnabled(false);
     SendBtn->setEnabled(false);
 }
-
-
 // //停靠窗口2的设置！！！
+
 void MainWindow::setvariables()
 {
     //停靠窗口2，调整各种变量
-    QDockWidget *dock2 = new QDockWidget(tr("DockWindow2"));
+    QDockWidget *dock2 = new QDockWidget(tr("Variables Setting"));
     dock2->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock2->setAllowedAreas(Qt::LeftDockWidgetArea|Qt::RightDockWidgetArea);
     //dock2->setStyleSheet("QPushButtonl{color:white;background-color:black}");//设置按钮/标签等颜色   color\background-color
@@ -770,20 +769,29 @@ void MainWindow::setvariables()
 
     QObject::connect(ReStartBtn,SIGNAL(clicked()),showWidget,SLOT(on_restart_clicked()));
     QObject::connect(this,SIGNAL(send_Restart()),showWidget,SLOT(on_restart_clicked()));
-     //connect(SendBtn,SIGNAL(clicked()),this,SLOT(Get_Date));
+
+
+
+
+
 }
-void MainWindow::axis_Signal()
+
+void MainWindow::send_Data_Signal(double x,double y,int z)
+{
+    emit send_To_Paint(x,y,z);
+}
+
+void MainWindow::axis_Signal()//暂时没用到
 {
     double x = InitELineEdit->text().toDouble();
     double y = FinalELineEdit->text().toDouble();
     emit send_Axis(x,y);
 }
 
-
 void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据；暂时让收发数据显示在这里，到后面可隐藏掉
 {
     //停靠窗口3，显示图像各种参数
-    QDockWidget *dock3 = new QDockWidget(tr("DockWindow3"));
+    QDockWidget *dock3 = new QDockWidget(tr("Information Of Status"));
     dock3->setFeatures(QDockWidget::DockWidgetMovable|QDockWidget::DockWidgetFloatable); //窗口可移动
     dock3->setAllowedAreas(Qt::BottomDockWidgetArea);
     addDockWidget(Qt::BottomDockWidgetArea,dock3);
@@ -799,6 +807,7 @@ void MainWindow::statusOfAll()//最下面的窗口，显示图像的各个数据
     dock3->setWidget(Dock3Widget);
 
 }
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
@@ -827,9 +836,62 @@ MainWindow::MainWindow(QWidget *parent)
 
 }
 
+
+void MainWindow::startObjThread()//创建线程
+{
+    dataThread= new QThread();//新建线程
+    thread = new Thread;//这个之前新建过就不必再新建
+    thread->moveToThread(dataThread);
+
+
+    connect(dataThread,SIGNAL(finished()),this,SLOT(finish_Thread_Slot()));
+
+    connect(dataThread,&QThread::finished,thread,&QObject::deleteLater);
+
+
+    QObject::connect(this,SIGNAL(start_ObjThread_Work1(QString)),thread,SLOT(receive_Data(QString)));
+
+
+    QObject::connect(thread,SIGNAL(clean_Data(double,double,int)),this,SLOT(send_Data_Signal(double,double,int)));//接收处理后的数据，再传到绘图cpp中绘图
+    QObject::connect(this,SIGNAL(send_To_Paint(double,double,int)),showWidget,SLOT(update_Data(double,double,int)));//接收处理后的数据，再传到绘图cpp中绘图
+
+
+    QObject::connect(ReStartBtn,SIGNAL(clicked()),thread,SLOT(on_restart_Clicked()));//初始化数据
+    QObject::connect(this,SIGNAL(send_Restart()),thread,SLOT(on_restart_Clicked()));
+    emit send_Restart();
+
+    dataThread->start();
+
+    qDebug()<<"新建线程 mainWidget QThread::currentThreadId()=="<<QThread::currentThreadId();
+}
+
+
+
+//调用线程的中断
+void MainWindow::close_Thread()
+{
+    qDebug()<<tr("关闭线程");
+      if(dataThread->isRunning())
+      {
+          dataThread->quit();            //退出事件循环
+          dataThread->wait();            //释放线程槽函数资源
+      }
+}
+void MainWindow::finish_Thread_Slot()
+{
+    qDebug()<<tr("多线程触发了finished信号");
+}
+
+
 MainWindow::~MainWindow()
 {
-
+    qDebug() << "start destroy widget";
+    if(dataThread)
+    {
+        dataThread->quit();
+    }
+    dataThread->wait();
+    qDebug() << "end destroy widget";
 }
 //一些固定的槽函数
 void MainWindow::Delay_MSec(int msec)//非阻塞延迟，采用事件循环的方法
@@ -838,6 +900,7 @@ void MainWindow::Delay_MSec(int msec)//非阻塞延迟，采用事件循环的�
     QTimer::singleShot(msec, &loop, SLOT(quit()));//创建单次定时器，槽函数为事件循环的退出函数
     loop.exec();//事件循环开始执行，程序会卡在这里，直到定时时间到，本循环被退出
 }
+
 void MainWindow::createStatusBars()//状态栏，最下面一行，显示状态
 {
     Status = statusBar();

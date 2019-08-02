@@ -18,13 +18,9 @@
 
 #include "qcustomplot.h"
 
-extern int flag0 ;
-extern int flag1 ;
-extern QString dataxy ;
-extern double datax;
-extern double datay;
-extern double dataflag;
 
+
+#include <QMutex>
 
 
 class ShowWidget : public QWidget
@@ -42,28 +38,34 @@ public:
     QValueAxis *axisx;
     QValueAxis *axisy;
     //一些函数
-    void update_Data(double x,double y);
+
     void set_Chart();
     QCustomPlot *Plot;
 
+    void stop();
 
 
 
 signals:
 
 
+
 public slots:
 
-    void receive_Data(QString All);
+
 
     void on_restart_clicked();
 
     void myMoveEvent(QMouseEvent *event);
 
+    void update_Data(double x,double y,int flag);
+
 private:
 
   QRubberBand *rubberBand;
   QPoint rubberOrigin;
+
+
 
 
 };
